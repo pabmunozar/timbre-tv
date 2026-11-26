@@ -130,12 +130,7 @@ public class RingService extends Service {
             ringing = false;
             return;
         }
-        try {
-            Uri uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
-            Ringtone r = RingtoneManager.getRingtone(this, uri);
-            r.play();
-        } catch (Exception ignored) {
-        }
+        // Sin sonido: pedir audio focus pausa el video en curso. El ding-dong lo pone el Nest.
         handler.postDelayed(() -> {
             try {
                 wm.removeView(tv);
