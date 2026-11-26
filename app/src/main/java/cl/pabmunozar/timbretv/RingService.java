@@ -6,22 +6,25 @@ import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Intent;
 import android.graphics.PixelFormat;
-import android.media.Ringtone;
-import android.media.RingtoneManager;
-import android.net.Uri;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.provider.Settings;
 import android.view.Gravity;
-import android.view.View;
 import android.view.WindowManager;
+import android.view.animation.DecelerateInterpolator;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
 
 public class RingService extends Service {
     private static final int PORT = 8089;
@@ -102,18 +105,59 @@ public class RingService extends Service {
         }
     }
 
+    private int dp(float v) {
+        return Math.round(v * getResources().getDisplayMetrics().density);
+    }
+
     private void showBanner() {
         if (!Settings.canDrawOverlays(this) || ringing) {
             return;
         }
         ringing = true;
-        TextView tv = new TextView(this);
-        tv.setText("\uD83D\uDD0D Alguien en la puerta");
-        tv.setTextColor(0xFFFFFFFF);
-        tv.setTextSize(34);
-        tv.setBackgroundColor(0xE0104090);
-        tv.setGravity(Gravity.CENTER);
-        tv.setPadding(48, 32, 48, 32);
+
+        // Tarjeta: fondo oscuro translúcido, esquinas redondeadas, borde sutil
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(0xF014161B);
+        bg.setCornerRadius(dp(22));
+        bg.setStroke(dp(1), 0x26FFFFFF);
+
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.HORIZONTAL);
+        card.setGravity(Gravity.CENTER_VERTICAL);
+        card.setBackground(bg);
+        card.setPadding(dp(16), dp(14), dp(26), dp(14));
+        card.setElevation(dp(6));
+
+        // Campana en un círculo azul
+        GradientDrawable circle = new GradientDrawable();
+        circle.setShape(GradientDrawable.OVAL);
+        circle.setColor(0xFF2E5AAC);
+        TextView bell = new TextView(this);
+        bell.setText("\uD83D\uDD0D");
+        bell.setTextSize(24);
+        bell.setTextColor(0xFFFFFFFF);
+        bell.setGravity(Gravity.CENTER);
+        bell.setBackground(circle);
+        LinearLayout.LayoutParams bellLp = new LinearLayout.LayoutParams(dp(52), dp(52));
+        bellLp.setMarginEnd(dp(16));
+        card.addView(bell, bellLp);
+
+        // Título + hora
+        LinearLayout col = new LinearLayout(this);
+        col.setOrientation(LinearLayout.VERTICAL);
+        TextView title = new TextView(this);
+        title.setText("Alguien en la puerta");
+        title.setTextColor(0xFFFFFFFF);
+        title.setTextSize(19);
+        title.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        TextView sub = new TextView(this);
+        sub.setText(new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date()));
+        sub.setTextColor(0x99FFFFFF);
+        sub.setTextSize(14);
+        col.addView(title);
+        col.addView(sub);
+        card.addView(col);
+
         WindowManager.LayoutParams lp = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 WindowManager.LayoutParams.WRAP_CONTENT,
@@ -122,22 +166,32 @@ public class RingService extends Service {
                         | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
                 PixelFormat.TRANSLUCENT);
         lp.gravity = Gravity.TOP | Gravity.END;
-        lp.x = 64;
-        lp.y = 64;
+        lp.x = dp(24);
+        lp.y = dp(24);
+
+        // Entrada deslizante desde la derecha
+        card.setAlpha(0f);
+        card.setTranslationX(dp(80));
         try {
-            wm.addView(tv, lp);
+            wm.addView(card, lp);
         } catch (Exception e) {
             ringing = false;
             return;
         }
+        card.animate().alpha(1f).translationX(0)
+                .setDuration(320).setInterpolator(new DecelerateInterpolator()).start();
+
         // Sin sonido: pedir audio focus pausa el video en curso. El ding-dong lo pone el Nest.
-        handler.postDelayed(() -> {
-            try {
-                wm.removeView(tv);
-            } catch (Exception ignored) {
-            }
-            ringing = false;
-        }, 6000);
+
+        // Salida deslizante a los 6 s
+        handler.postDelayed(() -> card.animate().alpha(0f).translationX(dp(80))
+                .setDuration(260).withEndAction(() -> {
+                    try {
+                        wm.removeView(card);
+                    } catch (Exception ignored) {
+                    }
+                    ringing = false;
+                }).start(), 6000);
     }
 
     @Override
