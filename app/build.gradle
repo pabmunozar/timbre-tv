@@ -1,0 +1,14 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'cl.pabmunozar.timbretv'
+    compileSdk 34
+    defaultConfig {
+        applicationId 'cl.pabmunozar.timbretv'
+        minSdk 27
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+    }
+    lint { abortOnError false }
+}
