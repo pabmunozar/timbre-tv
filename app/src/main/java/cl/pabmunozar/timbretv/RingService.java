@@ -5,6 +5,9 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Intent;
+import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.PixelFormat;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -128,16 +131,35 @@ public class RingService extends Service {
         card.setPadding(dp(16), dp(14), dp(26), dp(14));
         card.setElevation(dp(6));
 
-        // Campana en un círculo azul
+        // Campana vectorial (estilo Material, dibujada con Path) en un círculo azul
         GradientDrawable circle = new GradientDrawable();
         circle.setShape(GradientDrawable.OVAL);
         circle.setColor(0xFF2E5AAC);
-        TextView bell = new TextView(this);
-        bell.setText("\uD83D\uDD0D");
-        bell.setTextSize(24);
-        bell.setTextColor(0xFFFFFFFF);
-        bell.setGravity(Gravity.CENTER);
-        bell.setBackground(circle);
+        View bell = new View(this) {
+            @Override
+            protected void onDraw(Canvas canvas) {
+                super.onDraw(canvas);
+                Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                paint.setColor(0xFFFFFFFF);
+                paint.setStyle(Paint.Style.FILL);
+                float s = Math.min(getWidth(), getHeight()) / 24f;
+                canvas.save();
+                canvas.translate(getWidth() / 2f - 12f * s, getHeight() / 2f - 12f * s);
+                canvas.scale(s, s);
+                Path p = new Path();
+                p.moveTo(12f, 4.6f);
+                p.cubicTo(8.6f, 4.6f, 6.2f, 7.3f, 6.2f, 11.3f);
+                p.lineTo(5.1f, 16.4f);
+                p.lineTo(18.9f, 16.4f);
+                p.lineTo(17.8f, 11.3f);
+                p.cubicTo(17.8f, 7.3f, 15.4f, 4.6f, 12f, 4.6f);
+                p.close();
+                p.addCircle(12f, 3.6f, 1.5f, Path.Direction.CW);
+                p.addCircle(12f, 19.3f, 1.7f, Path.Direction.CW);
+                canvas.drawPath(p, paint);
+                canvas.restore();
+            }
+        };
         LinearLayout.LayoutParams bellLp = new LinearLayout.LayoutParams(dp(52), dp(52));
         bellLp.setMarginEnd(dp(16));
         card.addView(bell, bellLp);
